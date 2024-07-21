@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import ipinfo
 import math
 import sys
 
@@ -22,6 +23,33 @@ def calculate_battery_life(voltage):
 def bme_prediction(temperature, humidity, pressure, gas_resistance, gas_index, meas_index):
     return 1
 
+# Function to get IP information
+def get_ip_info(ip_address):
+    try:
+        access_token = '72511d15b2d4da'  # Replace with your ipinfo access token
+        handler = ipinfo.getHandler(access_token)
+        details = handler.getDetails(ip_address)
+        
+        city = details.city
+        region = details.region
+        country = details.country
+        latitude, longitude = details.loc.split(',')
+
+        return {
+            "country": country,
+            "region": region,
+            "city": city,
+            "postal": details.postal,
+            "latitude": latitude,
+            "longitude": longitude,
+            "timezone": details.timezone,
+            "isp": details.org,
+            "asn": details.org.split(' ')[0]  # Assuming the ASN is the first part of org
+        }
+    except Exception as e:
+        print(f"Error fetching IP info: {e}")
+        return {"error": "Unable to fetch IP information"}
+
 @app.route('/')
 def home():
     # Display the latest received data
@@ -44,8 +72,7 @@ def receive_data():
         # Get IP information if IP address is present in gateway_data
         ip_address = gateway_data.get('Ip_address')
         if ip_address:
-            # ip_info = get_ip_info(ip_address)
-            ip_info = {"info": "IP info processing is disabled"}
+            ip_info = get_ip_info(ip_address)
             processed_gateway_data.update(ip_info)
         else:
             ip_info = {}
@@ -126,4 +153,4 @@ def process_data(data, data_type, gateway_module_id=None):
     return processed_data
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
